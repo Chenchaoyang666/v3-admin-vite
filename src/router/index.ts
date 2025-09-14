@@ -100,6 +100,15 @@ export const constantRoutes: RouteRecordRaw[] = [
         }
       },
       {
+        path: "g6-graph",
+        component: () => import("@/pages/demo/g6-graph/index.vue"),
+        name: "G6Graph",
+        meta: {
+          title: "G6 Graph",
+          keepAlive: true
+        }
+      },
+      {
         path: "level2",
         component: () => import("@/pages/demo/level2/index.vue"),
         redirect: "/demo/level2/level3",

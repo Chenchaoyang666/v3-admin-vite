@@ -49,22 +49,23 @@ const loginFormRules: FormRules = {
 
 /** 登录 */
 function handleLogin() {
-  loginFormRef.value?.validate((valid) => {
-    if (!valid) {
-      ElMessage.error("表单校验不通过")
-      return
-    }
-    loading.value = true
-    loginApi(loginFormData).then(({ data }) => {
-      userStore.setToken(data.token)
-      router.push("/")
-    }).catch(() => {
-      createCode()
-      loginFormData.password = ""
-    }).finally(() => {
-      loading.value = false
-    })
-  })
+  userStore.setToken('testtoken')
+  // loginFormRef.value?.validate((valid) => {
+  //   if (!valid) {
+  //     ElMessage.error("表单校验不通过")
+  //     return
+  //   }
+  //   loading.value = true
+  //   loginApi(loginFormData).then(({ data }) => {
+  //     userStore.setToken(data.token)
+  //     router.push("/")
+  //   }).catch(() => {
+  //     createCode()
+  //     loginFormData.password = ""
+  //   }).finally(() => {
+  //     loading.value = false
+  //   })
+  // })
 }
 
 /** 创建验证码 */
@@ -80,7 +81,7 @@ function createCode() {
 }
 
 // 初始化验证码
-createCode()
+// createCode()
 </script>
 
 <template>
