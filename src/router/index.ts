@@ -109,6 +109,24 @@ export const constantRoutes: RouteRecordRaw[] = [
         }
       },
       {
+        path: "aiChat",
+        component: () => import("@/pages/demo/aiChat/index.vue"),
+        name: "aiChat",
+        meta: {
+          title: "aiChat",
+          keepAlive: true
+        }
+      },
+      {
+        path: "selectText",
+        component: () => import("@/pages/demo/aiChat/selectText.vue"),
+        name: "selectText",
+        meta: {
+          title: "selectText",
+          keepAlive: true
+        }
+      },
+      {
         path: "level2",
         component: () => import("@/pages/demo/level2/index.vue"),
         redirect: "/demo/level2/level3",
