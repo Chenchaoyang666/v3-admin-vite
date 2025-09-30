@@ -127,6 +127,15 @@ export const constantRoutes: RouteRecordRaw[] = [
         }
       },
       {
+        path: "stream",
+        component: () => import("@/pages/demo/aiChat/stream.vue"),
+        name: "stream",
+        meta: {
+          title: "stream",
+          keepAlive: true
+        }
+      },
+      {
         path: "level2",
         component: () => import("@/pages/demo/level2/index.vue"),
         redirect: "/demo/level2/level3",
