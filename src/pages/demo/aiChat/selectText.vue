@@ -1,4 +1,14 @@
 <template>
+  <el-image
+      style="width: 100px; height: 100px"
+      :src="url"
+      :zoom-rate="1.2"
+      :max-scale="7"
+      :min-scale="0.2"
+      :preview-src-list="srcList"
+      :initial-index="4"
+      fit="cover"
+    />
   <div class="mobile-text-selector">
     <div class="control-bar">
       <button class="select-btn" @click="showTip">
@@ -8,6 +18,15 @@
     <div ref="textContainer" class="text-content">
       <h3>示例文档标题</h3>
       <p>这是一段需要选取的文本内容。用户可以通过系统原生长按来选取范围，支持跨段落选择。</p>
+      <p>第二段示例文本，展示多段落选取功能。选取的文字可以用于复制、翻译或分享等操作。</p>
+      <p>移动端优化的交互体验，专为触摸屏幕设计，提供流畅的文字选取体验。</p>
+      <p>这是一段需要选取的文本内容。用户可以通过系统原生长按来选取范围，支持跨段落选择。</p>
+      <p>第二段示例文本，展示多段落选取功能。选取的文字可以用于复制、翻译或分享等操作。</p>
+      <p>移动端优化的交互体验，专为触摸屏幕设计，提供流畅的文字选取体验。</p><p>这是一段需要选取的文本内容。用户可以通过系统原生长按来选取范围，支持跨段落选择。</p>
+      <p>第二段示例文本，展示多段落选取功能。选取的文字可以用于复制、翻译或分享等操作。</p>
+      <p>移动端优化的交互体验，专为触摸屏幕设计，提供流畅的文字选取体验。</p><p>这是一段需要选取的文本内容。用户可以通过系统原生长按来选取范围，支持跨段落选择。</p>
+      <p>第二段示例文本，展示多段落选取功能。选取的文字可以用于复制、翻译或分享等操作。</p>
+      <p>移动端优化的交互体验，专为触摸屏幕设计，提供流畅的文字选取体验。</p><p>这是一段需要选取的文本内容。用户可以通过系统原生长按来选取范围，支持跨段落选择。</p>
       <p>第二段示例文本，展示多段落选取功能。选取的文字可以用于复制、翻译或分享等操作。</p>
       <p>移动端优化的交互体验，专为触摸屏幕设计，提供流畅的文字选取体验。</p>
     </div>
@@ -40,6 +59,19 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { showImagePreview } from '@/hooks/useImagePreview'
+
+const url =
+  'https://fuss10.elemecdn.com/a/3f/3302e58f9a181d2509f3dc0fa68b0jpeg.jpeg'
+const srcList = [
+  'https://fuss10.elemecdn.com/a/3f/3302e58f9a181d2509f3dc0fa68b0jpeg.jpeg',
+  'https://fuss10.elemecdn.com/1/34/19aa98b1fcb2781c4fba33d850549jpeg.jpeg',
+  'https://fuss10.elemecdn.com/0/6f/e35ff375812e6b0020b6b4e8f9583jpeg.jpeg',
+  'https://fuss10.elemecdn.com/9/bb/e27858e973f5d7d3904835f46abbdjpeg.jpeg',
+  'https://fuss10.elemecdn.com/d/e6/c4d93a3805b3ce3f323f7974e6f78jpeg.jpeg',
+  'https://fuss10.elemecdn.com/3/28/bbf893f792f03a54408b3b7a7ebf0jpeg.jpeg',
+  'https://fuss10.elemecdn.com/2/11/6535bcfb26e4c79b48ddde44f4b6fjpeg.jpeg',
+]
 
 const textContainer = ref(null);
 const selectedText = ref('');
@@ -141,6 +173,15 @@ function translateText() {
 function shareText() {
   alert('分享文本: ' + selectedText.value);
 }
+
+// 图片预览示例
+showImagePreview({
+  srcList: [
+    'https://fuss10.elemecdn.com/a/3f/3302e58f9a181d2509f3dc0fa68b0jpeg.jpeg',
+    'https://fuss10.elemecdn.com/1/34/19aa98b1fcb2781c4fba33d850549jpeg.jpeg'
+  ],
+  initialIndex: 1
+})
 </script>
 
 <style scoped>
