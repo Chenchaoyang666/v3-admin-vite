@@ -1,4 +1,16 @@
 <template>
+  <div>
+    <el-input v-model="text" type="textarea" :rows="8" />
+
+    <div class="btns">
+      <el-button @click="speak(text)">播放</el-button>
+      <el-button @click="pause">暂停</el-button>
+      <el-button @click="resume">继续</el-button>
+      <el-button @click="stop">停止</el-button>
+    </div>
+
+    <p>当前段落：{{ currentSegment }}</p>
+  </div>
   <el-image
       style="width: 100px; height: 100px"
       :src="url"
@@ -60,6 +72,11 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { showImagePreview } from '@/hooks/useImagePreview'
+import { useSpeech } from '@/hooks/useSpeech'
+
+const text = ref('这里是超长文本……')
+
+const { speak, pause, resume, stop, currentSegment } = useSpeech()
 
 const url =
   'https://fuss10.elemecdn.com/a/3f/3302e58f9a181d2509f3dc0fa68b0jpeg.jpeg'
