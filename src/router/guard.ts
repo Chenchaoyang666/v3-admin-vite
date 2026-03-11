@@ -1,12 +1,10 @@
 import type { Router } from "vue-router"
 import { setRouteChange } from "@@/composables/useRouteListener"
 import { useTitle } from "@@/composables/useTitle"
-import { getToken } from "@@/utils/cache/cookies"
 import NProgress from "nprogress"
 import { usePermissionStore } from "@/pinia/stores/permission"
 import { useUserStore } from "@/pinia/stores/user"
 import { routerConfig } from "@/router/config"
-import { isWhiteList } from "@/router/whitelist"
 
 NProgress.configure({ showSpinner: false })
 
@@ -20,14 +18,7 @@ export function registerNavigationGuard(router: Router) {
     NProgress.start()
     const userStore = useUserStore()
     const permissionStore = usePermissionStore()
-    // 如果没有登录
-    if (!getToken()) {
-      // 如果在免登录的白名单中，则直接进入
-      if (isWhiteList(to)) return true
-      // 其他没有访问权限的页面将被重定向到登录页面
-      return LOGIN_PATH
-    }
-    // 如果已经登录，并准备进入 Login 页面，则重定向到主页
+    // 不需要登录：访问 Login 页面时直接重定向到主页
     if (to.path === LOGIN_PATH) return "/"
     // 如果用户已经获得其权限角色
     if (userStore.roles.length !== 0) return true
@@ -43,10 +34,11 @@ export function registerNavigationGuard(router: Router) {
       // 设置 replace: true, 因此导航将不会留下历史记录
       return { ...to, replace: true }
     } catch (error) {
-      // 过程中发生任何错误，都直接重置 Token，并重定向到登录页面
-      userStore.resetToken()
+      // 不需要登录：发生错误时降级为加载全部路由，避免卡在登录流程
       ElMessage.error((error as Error).message || "路由守卫发生错误")
-      return LOGIN_PATH
+      permissionStore.setAllRoutes()
+      permissionStore.addRoutes.forEach(route => router.addRoute(route))
+      return { ...to, replace: true }
     }
   })
 

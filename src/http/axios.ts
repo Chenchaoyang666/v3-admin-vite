@@ -4,10 +4,10 @@ import axios from "axios"
 import { get, merge } from "lodash-es"
 import { useUserStore } from "@/pinia/stores/user"
 
-/** 退出登录并强制刷新页面（会重定向到登录页） */
+/** 清理用户状态并回到首页（项目已禁用登录流程） */
 function logout() {
   useUserStore().logout()
-  location.reload()
+  location.replace("/")
 }
 
 /** 创建请求实例 */

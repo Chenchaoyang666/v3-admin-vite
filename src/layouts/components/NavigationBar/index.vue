@@ -33,7 +33,7 @@ function toggleSidebar() {
 /** 登出 */
 function logout() {
   userStore.logout()
-  router.push("/login")
+  router.push("/")
 }
 </script>
 

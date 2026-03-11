@@ -50,6 +50,7 @@ const loginFormRules: FormRules = {
 /** 登录 */
 function handleLogin() {
   userStore.setToken('testtoken')
+  router.push("/")
   // loginFormRef.value?.validate((valid) => {
   //   if (!valid) {
   //     ElMessage.error("表单校验不通过")
