@@ -136,6 +136,15 @@ export const constantRoutes: RouteRecordRaw[] = [
         }
       },
       {
+        path: "myInfo",
+        component: () => import("@/pages/demo/myInfo/index.vue"),
+        name: "myInfo",
+        meta: {
+          title: "个人简历",
+          keepAlive: true
+        }
+      },
+      {
         path: "level2",
         component: () => import("@/pages/demo/level2/index.vue"),
         redirect: "/demo/level2/level3",

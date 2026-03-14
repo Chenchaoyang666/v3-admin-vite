@@ -43,6 +43,15 @@ export default defineConfig(({ mode }) => {
           ws: false,
           // 是否允许跨域
           changeOrigin: true
+        },
+        "/api": {
+          target: "http://localhost:3001",
+          // 是否为 WebSocket
+          ws: false,
+          // 是否允许跨域
+          changeOrigin: true,
+          // 重写路径
+          rewrite: (path) => path.replace(/^\/api/, "")
         }
       },
       // 是否允许跨域
