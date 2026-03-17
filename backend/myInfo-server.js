@@ -18,7 +18,7 @@ app.use(express.json({ limit: "10mb" }))
 app.use(express.urlencoded({ extended: true, limit: "10mb" }))
 
 // 数据文件路径
-const DATA_FILE = join(__dirname, "data", "resume.json")
+const DATA_FILE = join(__dirname, "data", "resume_local.json")
 
 // 确保数据目录存在
 const DATA_DIR = join(__dirname, "data")
@@ -166,10 +166,20 @@ app.listen(PORT, () => {
 })
 
 // 优雅关闭
+
+// # 先查找进程 PID
+// lsof -ti:3001
+
+// # 发送 SIGTERM 信号
+// kill PID
+
 process.on("SIGTERM", () => {
   console.log("收到 SIGTERM 信号，正在关闭服务器...")
   process.exit(0)
 })
+
+// node backend/myInfo-server.js
+// # 然后按 Ctrl+C
 
 process.on("SIGINT", () => {
   console.log("收到 SIGINT 信号，正在关闭服务器...")
