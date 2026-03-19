@@ -2,6 +2,7 @@
 import { useGreyAndColorWeakness } from "@@/composables/useGreyAndColorWeakness"
 import { usePany } from "@@/composables/usePany"
 import { useTheme } from "@@/composables/useTheme"
+import { initActivityListeners, destroyActivityListeners, pauseTracking, resumeTracking, setWatchedPages } from "@/hooks/pageDurationTracker"
 import zhCn from "element-plus/es/locale/lang/zh-cn" // Element Plus 中文包
 
 const { initTheme } = useTheme()
@@ -23,6 +24,26 @@ initStoreNotification()
 
 initMobileNotification()
 // #endregion
+
+// 初始化页面停留时长统计
+// 配置需要监听的页面路径，不调用 setWatchedPages 则监听所有页面
+setWatchedPages(["/demo/myInfo"])
+initActivityListeners()
+const onVisibilityChange = () => {
+  document.visibilityState === "hidden" ? pauseTracking() : resumeTracking()
+}
+document.addEventListener("visibilitychange", onVisibilityChange)
+window.addEventListener("pagehide", pauseTracking)
+window.addEventListener("blur", pauseTracking)
+window.addEventListener("focus", resumeTracking)
+
+onBeforeUnmount(() => {
+  destroyActivityListeners()
+  document.removeEventListener("visibilitychange", onVisibilityChange)
+  window.removeEventListener("pagehide", pauseTracking)
+  window.removeEventListener("blur", pauseTracking)
+  window.removeEventListener("focus", resumeTracking)
+})
 </script>
 
 <template>

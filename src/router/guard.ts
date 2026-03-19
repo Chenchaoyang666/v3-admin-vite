@@ -1,5 +1,6 @@
 import type { Router } from "vue-router"
 import { setRouteChange } from "@@/composables/useRouteListener"
+import { switchPage } from "@/hooks/pageDurationTracker"
 import { useTitle } from "@@/composables/useTitle"
 import NProgress from "nprogress"
 import { usePermissionStore } from "@/pinia/stores/permission"
@@ -47,5 +48,6 @@ export function registerNavigationGuard(router: Router) {
     setRouteChange(to)
     setTitle(to.meta.title)
     NProgress.done()
+    switchPage(to.path)
   })
 }
