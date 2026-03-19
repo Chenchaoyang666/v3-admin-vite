@@ -150,6 +150,58 @@ app.post("/myInfo/resume", (req, res) => {
   }
 })
 
+// 页面停留时长数据文件路径
+const PAGE_STATS_FILE = join(__dirname, "data", "page_stats.json")
+
+// 读取停留时长记录
+function readPageStats() {
+  try {
+    if (existsSync(PAGE_STATS_FILE)) {
+      const data = readFileSync(PAGE_STATS_FILE, "utf-8")
+      const parsed = JSON.parse(data)
+      return Array.isArray(parsed) ? parsed : []
+    }
+  } catch (error) {
+    console.error("读取页面统计数据失败:", error)
+  }
+  return []
+}
+
+// 上报页面停留时长
+app.post("/page-stats/duration", (req, res) => {
+  console.log("POST /page-stats/duration - 上报页面停留时长")
+  const { page, duration, startTime, endTime } = req.body
+
+  if (!page || duration === undefined) {
+    res.status(400).json({ code: 400, data: null, message: "page 和 duration 为必填项" })
+    return
+  }
+
+  try {
+    const records = readPageStats()
+    const record = { page, duration, startTime, endTime, createdAt: new Date().toISOString() }
+    records.push(record)
+    writeFileSync(PAGE_STATS_FILE, JSON.stringify(records, null, 2), "utf-8")
+    console.log(`页面 ${page} 停留时长: ${duration}s`)
+    res.json({ code: 0, data: record, message: "上报成功" })
+  } catch (error) {
+    console.error("上报页面停留时长失败:", error)
+    res.status(500).json({ code: 500, data: null, message: "上报失败" })
+  }
+})
+
+// 查询页面停留时长记录
+app.get("/page-stats/duration", (req, res) => {
+  console.log("GET /page-stats/duration - 查询页面停留时长记录")
+  try {
+    const records = readPageStats()
+    res.json({ code: 0, data: records, message: "获取成功" })
+  } catch (error) {
+    console.error("查询页面统计数据失败:", error)
+    res.status(500).json({ code: 500, data: null, message: "获取失败" })
+  }
+})
+
 // 健康检查
 app.get("/health", (req, res) => {
   res.json({ status: "ok", message: "myInfo backend is running" })

@@ -387,6 +387,9 @@ import {
   User,
 } from "@element-plus/icons-vue"
 import { getResumeApi, saveResumeApi } from "./api"
+import { usePageDuration } from "@/hooks/usePageDuration"
+
+usePageDuration({ page: "/demo/myInfo" })
 
 interface WorkExperience {
   company: string
