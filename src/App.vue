@@ -18,11 +18,11 @@ initTheme()
 initGreyAndColorWeakness()
 
 // #region 初始化通知
-initStarNotification()
+// initStarNotification()
 
-initStoreNotification()
+// initStoreNotification()
 
-initMobileNotification()
+// initMobileNotification()
 // #endregion
 
 // 初始化页面停留时长统计
