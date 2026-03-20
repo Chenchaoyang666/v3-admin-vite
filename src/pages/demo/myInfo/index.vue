@@ -11,7 +11,7 @@
           <el-card class="profile-sidebar" shadow="hover">
             <!-- 头像区域 -->
             <div class="avatar-wrapper">
-              <el-avatar :size="140" :src="formData.avatar || defaultAvatar" class="avatar" />
+              <el-avatar :size="140" :src="formData.avatar || defaultAvatar" class="avatar" @error="onAvatarError" />
               <div class="avatar-overlay" @click="changeAvatar">
                 <el-icon :size="32"><Camera /></el-icon>
                 <span>更换头像</span>
@@ -347,18 +347,45 @@
     </el-dialog>
 
     <!-- 头像选择对话框 -->
-    <el-dialog v-model="avatarDialogVisible" title="更换头像" width="500px">
+    <el-dialog v-model="avatarDialogVisible" title="更换头像" width="520px">
+      <!-- 自定义上传区 -->
+      <div class="avatar-upload-section">
+        <p class="avatar-section-label">自定义上传</p>
+        <el-upload
+          :auto-upload="false"
+          :show-file-list="false"
+          accept="image/jpeg,image/png,image/webp"
+          drag
+          :on-change="handleAvatarUpload"
+          class="avatar-uploader"
+        >
+          <div v-if="uploadPreview" class="upload-preview">
+            <el-avatar :size="100" :src="uploadPreview" />
+            <p class="upload-preview-hint">点击重新上传</p>
+          </div>
+          <div v-else class="upload-placeholder">
+            <el-icon :size="36" class="upload-icon"><Camera /></el-icon>
+            <p class="upload-text">点击或拖拽图片到此处</p>
+            <p class="upload-hint">支持 JPG / PNG / WebP，≤ 2MB</p>
+          </div>
+        </el-upload>
+      </div>
+
+      <el-divider content-position="center">或选择预设头像</el-divider>
+
+      <!-- 预设头像 -->
       <div class="avatar-options">
         <div
           v-for="(avatar, index) in avatarOptions"
           :key="index"
           class="avatar-option"
-          :class="{ active: selectedAvatar === avatar }"
+          :class="{ active: selectedAvatar === avatar && !uploadPreview }"
           @click="selectAvatar(avatar)"
         >
           <el-avatar :size="80" :src="avatar" />
         </div>
       </div>
+
       <template #footer>
         <div class="dialog-footer">
           <el-button @click="avatarDialogVisible = false">取消</el-button>
@@ -445,6 +472,7 @@ const avatarDialogVisible = ref(false)
 const saving = ref(false)
 const skillInput = ref("")
 const selectedAvatar = ref("")
+const uploadPreview = ref("")
 const activeTab = ref("basic")
 
 // 时间轴动画可见状态
@@ -603,19 +631,69 @@ function removeProject(index: number) {
 // 头像操作
 function changeAvatar() {
   selectedAvatar.value = formData.value.avatar || defaultAvatar
+  uploadPreview.value = ""
   avatarDialogVisible.value = true
 }
 
 function selectAvatar(avatar: string) {
   selectedAvatar.value = avatar
+  uploadPreview.value = ""
 }
 
-function confirmAvatar() {
-  if (!editForm.value) {
-    editForm.value = JSON.parse(JSON.stringify(formData.value))
+function compressImage(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const img = new Image()
+      img.onload = () => {
+        const MAX = 400
+        const scale = Math.min(1, MAX / Math.max(img.width, img.height))
+        const canvas = document.createElement("canvas")
+        canvas.width = Math.round(img.width * scale)
+        canvas.height = Math.round(img.height * scale)
+        canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height)
+        resolve(canvas.toDataURL("image/jpeg", 0.85))
+      }
+      img.onerror = reject
+      img.src = e.target!.result as string
+    }
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
+
+async function handleAvatarUpload(uploadFile: { raw?: File }) {
+  const file = uploadFile.raw
+  if (!file) return
+  const ALLOWED = ["image/jpeg", "image/png", "image/webp"]
+  if (!ALLOWED.includes(file.type)) {
+    ElMessage.error("仅支持 JPG / PNG / WebP 格式")
+    return
   }
-  editForm.value.avatar = selectedAvatar.value
+  // if (file.size > 2 * 1024 * 1024) {
+  //   ElMessage.error("图片大小不能超过 2MB")
+  //   return
+  // }
+  const base64 = await compressImage(file)
+  uploadPreview.value = base64
+  selectedAvatar.value = base64
+}
+
+async function confirmAvatar() {
+  formData.value.avatar = selectedAvatar.value
   avatarDialogVisible.value = false
+  try {
+    await saveResumeApi(formData.value)
+    ElMessage.success("头像更换成功")
+  } catch (error) {
+    console.error("头像保存失败:", error)
+    ElMessage.error("头像保存失败")
+  }
+}
+
+// 头像加载失败容错：fallback 到默认头像
+function onAvatarError() {
+  formData.value.avatar = defaultAvatar
 }
 
 // 复制到剪贴板
@@ -1050,6 +1128,64 @@ onMounted(async () => {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
+}
+
+.avatar-upload-section {
+  padding: 0 16px;
+
+  .avatar-section-label {
+    font-size: 14px;
+    color: var(--el-text-color-secondary);
+    margin: 0 0 10px 0;
+    font-weight: 500;
+  }
+
+  .avatar-uploader {
+    :deep(.el-upload-dragger) {
+      padding: 20px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 120px;
+    }
+  }
+
+  .upload-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+
+    .upload-icon {
+      color: var(--el-text-color-placeholder);
+    }
+
+    .upload-text {
+      font-size: 14px;
+      color: var(--el-text-color-regular);
+      margin: 0;
+    }
+
+    .upload-hint {
+      font-size: 12px;
+      color: var(--el-text-color-placeholder);
+      margin: 0;
+    }
+  }
+
+  .upload-preview {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+
+    .upload-preview-hint {
+      font-size: 12px;
+      color: var(--el-text-color-placeholder);
+      margin: 0;
+    }
+  }
 }
 
 .avatar-options {
