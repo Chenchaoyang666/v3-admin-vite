@@ -110,30 +110,23 @@ export const constantRoutes: RouteRecordRaw[] = [
       },
       {
         path: "aiChat",
-        component: () => import("@/pages/demo/aiChat/index.vue"),
-        name: "aiChat",
+        redirect: "/demo/aiChat/selectText",
+        name: "AiChat",
         meta: {
-          title: "aiChat",
-          keepAlive: true
-        }
-      },
-      {
-        path: "selectText",
-        component: () => import("@/pages/demo/aiChat/selectText.vue"),
-        name: "selectText",
-        meta: {
-          title: "selectText",
-          keepAlive: true
-        }
-      },
-      {
-        path: "stream",
-        component: () => import("@/pages/demo/aiChat/stream.vue"),
-        name: "stream",
-        meta: {
-          title: "stream",
-          keepAlive: true
-        }
+          title: "AI 相关",
+          alwaysShow: true
+        },
+        children: [
+          {
+            path: "selectText",
+            component: () => import("@/pages/demo/aiChat/selectText.vue"),
+            name: "SelectText",
+            meta: {
+              title: "功能测试",
+              keepAlive: true
+            }
+          }
+        ]
       },
       {
         path: "myInfo",
