@@ -125,6 +125,15 @@ export const constantRoutes: RouteRecordRaw[] = [
               title: "功能测试",
               keepAlive: true
             }
+          },
+          {
+            path: "streamChat",
+            component: () => import("@/pages/demo/aiChat/streamChat.vue"),
+            name: "StreamChat",
+            meta: {
+              title: "流式对话 Demo",
+              keepAlive: true
+            }
           }
         ]
       },
