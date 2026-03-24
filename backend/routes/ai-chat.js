@@ -19,12 +19,7 @@ function createMessage(role, content) {
   }
 }
 
-function buildAssistantReply(userMessage, history) {
-  const recentSummary = history
-    .slice(-4)
-    .map((item, index) => `${index + 1}. [${item.role}] ${item.content}`)
-    .join("\n")
-
+function buildAssistantReply(userMessage) {
   return [
     "# 富内容流式回复 Demo",
     "",
@@ -45,9 +40,9 @@ function buildAssistantReply(userMessage, history) {
     "2. 助手回复通过 SSE 按小片段持续推送。",
     "3. 当前轮问答完成后，用户和助手消息都会落盘到 `backend/data/ai_chat_messages.json`。",
     "",
-    recentSummary
-      ? `> 最近几条上下文如下：\n> ${recentSummary.replaceAll("\n", "\n> ")}`
-      : "> 当前还没有更多历史上下文，这是第一次演示消息。",
+    // recentSummary
+    //   ? `> 最近几条上下文如下：\n> ${recentSummary.replaceAll("\n", "\n> ")}`
+    //   : "> 当前还没有更多历史上下文，这是第一次演示消息。",
     "",
     "## 示例表格",
     "",
@@ -170,7 +165,7 @@ export function registerAiChatRoutes(app, options) {
 
     const messages = readAiChatMessages(aiChatFile)
     const userMessage = createMessage("user", userText)
-    const assistantText = buildAssistantReply(userText, messages)
+    const assistantText = buildAssistantReply(userText)
     const assistantMessage = createMessage("assistant", assistantText)
     const chunks = assistantText.match(/.{1,12}/gs) || [assistantText]
 
@@ -204,6 +199,41 @@ export function registerAiChatRoutes(app, options) {
       console.error("流式输出失败:", error)
       sendEvent({ type: "error", error: "流式输出失败" })
       res.end()
+    }
+  })
+
+  app.post("/ai-chat/reply", async (req, res) => {
+    const userText = `${req.body?.message || ""}`.trim()
+
+    if (!userText) {
+      res.status(400).json({ code: 400, data: null, message: "message 不能为空" })
+      return
+    }
+
+    try {
+      const messages = readAiChatMessages(aiChatFile)
+      const userMessage = createMessage("user", userText)
+      const assistantText = buildAssistantReply(userText)
+      const assistantMessage = createMessage("assistant", assistantText)
+      const nextMessages = [...messages, userMessage, assistantMessage]
+      const success = saveAiChatMessages(aiChatFile, nextMessages)
+
+      if (!success) {
+        res.status(500).json({ code: 500, data: null, message: "消息落盘失败" })
+        return
+      }
+
+      res.json({
+        code: 0,
+        data: {
+          content: assistantText,
+          message: assistantMessage
+        },
+        message: "获取成功"
+      })
+    } catch (error) {
+      console.error("非流式回复失败:", error)
+      res.status(500).json({ code: 500, data: null, message: "获取失败" })
     }
   })
 }

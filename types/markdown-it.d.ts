@@ -1,4 +1,12 @@
 declare module "markdown-it" {
+  interface RendererRules {
+    [key: string]: (...args: any[]) => string
+  }
+
+  interface Renderer {
+    rules: RendererRules
+  }
+
   interface MarkdownItOptions {
     html?: boolean
     linkify?: boolean
@@ -7,6 +15,7 @@ declare module "markdown-it" {
 
   export default class MarkdownIt {
     constructor(options?: MarkdownItOptions)
+    renderer: Renderer
     use(plugin: (...args: any[]) => any, ...params: any[]): this
     render(src: string): string
   }

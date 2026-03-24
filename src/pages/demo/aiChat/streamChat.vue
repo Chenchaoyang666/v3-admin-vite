@@ -2,9 +2,12 @@
 import type { AiChatMessage } from "@/common/components/AiChatShell"
 import dayjs from "dayjs"
 import { ElMessage } from "element-plus"
-import { onMounted, ref } from "vue"
+import { computed, onMounted, ref } from "vue"
 import { AiChatShell } from "@/common/components/AiChatShell"
+import { useAiChatSession } from "@/common/composables/useAiChatSession"
 import { useAiChatStream } from "@/common/composables/useAiChatStream"
+
+type ChatMode = "server_stream" | "client_simulated_stream"
 
 const quickPrompts = [
   "帮我总结一下这个流式输出 demo 的实现思路",
@@ -15,6 +18,9 @@ const quickPrompts = [
 const draft = ref("")
 const messages = ref<AiChatMessage[]>([])
 const pendingAssistant = ref("")
+const chatMode = ref<ChatMode>("server_stream")
+
+const submitUrl = computed(() => chatMode.value === "server_stream" ? "/api/ai-chat/stream" : "/api/ai-chat/reply")
 
 function formatTime(value: string) {
   return dayjs(value).format("HH:mm:ss")
@@ -26,7 +32,7 @@ function applyPrompt(prompt: string) {
 
 async function loadHistory() {
   try {
-    await streamController.loadHistory()
+    await sessionController.loadHistory()
   } catch (error) {
     console.error(error)
     ElMessage.error("加载聊天记录失败")
@@ -35,7 +41,7 @@ async function loadHistory() {
 
 async function clearMessages() {
   try {
-    await streamController.clearMessages()
+    await sessionController.clearMessages()
     ElMessage.success("聊天记录已清空")
   } catch (error) {
     console.error(error)
@@ -56,12 +62,19 @@ const streamController = useAiChatStream({
   messages,
   draft,
   pendingContent: pendingAssistant,
+  responseMode: chatMode,
+  streamUrl: submitUrl
+})
+
+const sessionController = useAiChatSession({
+  messages,
+  pendingContent: pendingAssistant,
   historyUrl: "/api/ai-chat/messages",
-  streamUrl: "/api/ai-chat/stream",
   deleteUrl: "/api/ai-chat/messages"
 })
 
-const { historyLoading, submitting, streaming } = streamController
+const { submitting, streaming } = streamController
+const { historyLoading } = sessionController
 
 onMounted(() => {
   loadHistory()
@@ -92,11 +105,44 @@ onMounted(() => {
     @refresh="loadHistory"
     @clear="clearMessages"
     @prompt-select="applyPrompt"
-  />
+  >
+    <template #hero-actions>
+      <el-radio-group v-model="chatMode" size="small" class="mode-switch">
+        <el-radio-button label="server_stream" value="server_stream">
+          后端流式
+        </el-radio-button>
+        <el-radio-button label="client_simulated_stream" value="client_simulated_stream">
+          前端模拟流式
+        </el-radio-button>
+      </el-radio-group>
+      <el-button :loading="historyLoading" @click="loadHistory">
+        刷新记录
+      </el-button>
+      <el-popconfirm
+        width="280"
+        title="将清空 backend/data 中保存的对话记录，是否继续？"
+        confirm-button-text="确定"
+        cancel-button-text="取消"
+        :hide-after="0"
+        :disabled="submitting || streaming"
+        @confirm="clearMessages"
+      >
+        <template #reference>
+          <el-button type="danger" plain :disabled="submitting || streaming">
+            清空记录
+          </el-button>
+        </template>
+      </el-popconfirm>
+    </template>
+  </AiChatShell>
 </template>
 
 <style scoped lang="scss">
 :deep(.ai-chat-shell) {
   min-height: calc(100vh - 120px);
+}
+
+.mode-switch {
+  margin-right: 8px;
 }
 </style>

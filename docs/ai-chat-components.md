@@ -11,13 +11,21 @@
 用途：提供完整聊天壳布局，包括头部、侧栏、消息区、流式消息展示、自动滚动、回到底部按钮、输入区和发送区。
 
 3. `useAiChatStream`
-用途：抽离流式请求、SSE 分片解析、消息列表更新、历史加载和清空逻辑。
+用途：只负责消息提交、SSE 分片解析，以及“后端真流式 / 前端模拟流式”两种输出模式。
+
+4. `useAiChatSession`
+用途：负责消息列表状态、历史加载和清空逻辑。
+
+5. `sse.ts`
+用途：负责 SSE 事件分块与 `data:` 行提取。
 
 ## 文件位置
 
 - `src/common/components/RichContentRenderer/`
 - `src/common/components/AiChatShell/`
 - `src/common/composables/useAiChatStream.ts`
+- `src/common/composables/useAiChatSession.ts`
+- `src/common/utils/sse.ts`
 
 ## 依赖
 
@@ -171,12 +179,11 @@ const streamController = useAiChatStream({
   messages,
   draft,
   pendingContent,
-  historyUrl: "/api/ai-chat/messages",
-  streamUrl: "/api/ai-chat/stream",
-  deleteUrl: "/api/ai-chat/messages"
+  responseMode: "server_stream",
+  streamUrl: "/api/ai-chat/stream"
 })
 
-const { historyLoading, submitting, streaming, loadHistory, clearMessages, submitMessage } = streamController
+const { submitting, streaming, submitMessage } = streamController
 ```
 
 ### UseAiChatStreamOptions
@@ -184,21 +191,178 @@ const { historyLoading, submitting, streaming, loadHistory, clearMessages, submi
 - `messages: Ref<AiChatMessage[]>`
 - `draft: Ref<string>`
 - `pendingContent: Ref<string>`
-- `historyUrl: string`
 - `streamUrl: string`
-- `deleteUrl?: string`
+- `responseMode?: "server_stream" | "client_simulated_stream"`
 - `createUserMessage?: (content: string) => AiChatMessage`
+- `createAssistantMessage?: (content: string) => AiChatMessage`
 - `buildSubmitBody?: (message: string) => Record<string, unknown>`
 - `parseStreamPayload?: (raw: string) => AiChatStreamPayload`
+- `parseNonStreamResponse?: (response: Response) => Promise<AiChatNonStreamResult>`
+- `getSimulatedChunks?: (content: string) => string[]`
+- `simulatedChunkDelay?: number`
+
+### 返回值
+
+- `submitting`
+- `streaming`
+- `submitMessage()`
+
+## 两种流式原理
+
+### 1. 后端真流式 `server_stream`
+
+这种模式下，后端接口本身支持流式输出，通常会返回 `SSE` 或 `ReadableStream`。
+
+当前 demo 的实现方式是：
+
+1. 前端调用 `/api/ai-chat/stream`
+2. 后端按片段不断写出：
+
+```txt
+data: {"type":"delta","content":"..."}
+
+data: {"type":"delta","content":"..."}
+
+data: {"type":"done","message":{...}}
+```
+
+3. 前端通过 `response.body.getReader()` 持续读取字节流
+4. 先用 `\n\n` 切分事件块
+5. 再在单个事件块里逐行找到 `data:` 那一行
+6. 把 `delta` 累加到 `pendingContent`
+7. 收到 `done` 后，把最终 assistant 消息压入消息列表
+
+为什么一个事件块内部还要再按 `\n` 分行：
+
+- 因为 `SSE` 标准里一个事件可以包含多行字段，比如 `event:`、`id:`、`data:`
+- 所以前端不能假设整个事件块只有一行 `data:`
+- 当前代码里已经下沉到 `src/common/utils/sse.ts`
+- `resolveSSEEvents(buffer)`：负责按 `\n\n` 拆分完整事件块，并保留未完成尾巴
+- `getSSEDataLine(eventBlock)`：负责从单个事件块里提取 `data:` 行
+
+适用场景：
+
+- 后端本身接的是大模型流式接口
+- 希望首字尽可能快出来
+- 希望前后端都遵循真实流式协议
+
+### 2. 前端模拟流式 `client_simulated_stream`
+
+这种模式下，后端接口不支持流式，而是一次性返回完整内容。
+
+当前 demo 的实现方式是：
+
+1. 前端调用 `/api/ai-chat/reply`
+2. 后端直接返回完整回答
+3. 前端拿到整段内容后，按规则切成小块
+4. 用定时延迟逐段追加到 `pendingContent`
+5. 全部追加完成后，再生成最终 assistant 消息并写入消息列表
+
+也就是说，这种模式的“流式效果”不是网络层流式，而是：
+
+- 网络层：一次性返回
+- 展示层：前端自己分片模拟打字效果
+
+适用场景：
+
+- 后端暂时没有 SSE / 流式能力
+- 只是想在 UI 上保留流式输出体验
+- 需要兼容传统一次性返回的接口
+
+### 两种模式的差异
+
+- `server_stream`
+  优点：更真实，首字更快，适合真实大模型流
+  缺点：后端实现复杂度更高
+
+- `client_simulated_stream`
+  优点：后端简单，兼容普通 JSON 接口
+  缺点：本质不是网络流式，必须等后端整段内容先返回
+
+### 使用两种模式
+
+#### 1. 后端真流式
+
+适合后端返回 SSE 或者 `ReadableStream` 分片：
+
+```ts
+useAiChatStream({
+  messages,
+  draft,
+  pendingContent,
+  responseMode: "server_stream",
+  streamUrl: "/api/ai-chat/stream"
+})
+```
+
+#### 2. 后端一次性返回全文，前端模拟流式
+
+适合后端接口只会一次性返回完整回答：
+
+```ts
+useAiChatStream({
+  messages,
+  draft,
+  pendingContent,
+  responseMode: "client_simulated_stream",
+  streamUrl: "/api/chat/reply",
+  parseNonStreamResponse: async (response) => {
+    const result = await response.json()
+    return {
+      content: result.data.answer
+    }
+  },
+  getSimulatedChunks: (content) => content.match(/.{1,10}/gs) || [content],
+  simulatedChunkDelay: 40
+})
+```
+
+## useAiChatSession 用法
+
+```ts
+import { ref } from "vue"
+import type { AiChatMessage } from "@/common/components/AiChatShell"
+import { useAiChatSession } from "@/common/composables/useAiChatSession"
+
+const messages = ref<AiChatMessage[]>([])
+const pendingContent = ref("")
+
+const sessionController = useAiChatSession({
+  messages,
+  pendingContent,
+  historyUrl: "/api/ai-chat/messages",
+  deleteUrl: "/api/ai-chat/messages"
+})
+
+const { historyLoading, loadHistory, clearMessages } = sessionController
+```
+
+### UseAiChatSessionOptions
+
+- `messages: Ref<AiChatMessage[]>`
+- `pendingContent: Ref<string>`
+- `historyUrl: string`
+- `deleteUrl?: string`
 
 ### 返回值
 
 - `historyLoading`
-- `submitting`
-- `streaming`
 - `loadHistory()`
 - `clearMessages()`
-- `submitMessage()`
+
+## 当前 demo 的双模式接口
+
+当前演示页顶部已经提供模式切换：
+
+- `后端流式`
+  使用 `/api/ai-chat/stream`
+- `前端模拟流式`
+  使用 `/api/ai-chat/reply`
+
+其中：
+
+- `/api/ai-chat/stream` 由后端按 SSE 分片返回
+- `/api/ai-chat/reply` 由后端一次性返回完整内容，前端再按 chunk 模拟成流式体验
 
 ## 推荐迁移方式
 
@@ -207,9 +371,11 @@ const { historyLoading, submitting, streaming, loadHistory, clearMessages, submi
 1. `src/common/components/RichContentRenderer/`
 2. `src/common/components/AiChatShell/`
 3. `src/common/composables/useAiChatStream.ts`
-4. `echarts`
-5. `markdown-it`
-6. `markdown-it-task-lists`
+4. `src/common/composables/useAiChatSession.ts`
+5. `src/common/utils/sse.ts`
+6. `echarts`
+7. `markdown-it`
+8. `markdown-it-task-lists`
 
 如果目标项目没有 Element Plus：
 
