@@ -1,11 +1,11 @@
 <script lang="ts" setup>
-import type { AiChatMessage } from "@/common/components/AiChatShell"
+import type { AiChatMessage } from "./components/AiChatShell"
 import dayjs from "dayjs"
 import { ElMessage } from "element-plus"
-import { computed, onMounted, ref } from "vue"
-import { AiChatShell } from "@/common/components/AiChatShell"
-import { useAiChatSession } from "@/common/composables/useAiChatSession"
-import { useAiChatStream } from "@/common/composables/useAiChatStream"
+import { onMounted, ref } from "vue"
+import { AiChatShell } from "./components/AiChatShell"
+import { useAiChatSession } from "./composables/useAiChatSession"
+import { useAiChatStream } from "./composables/useAiChatStream"
 
 type ChatMode = "server_stream" | "client_simulated_stream"
 
@@ -20,14 +20,21 @@ const messages = ref<AiChatMessage[]>([])
 const pendingAssistant = ref("")
 const chatMode = ref<ChatMode>("server_stream")
 
-const submitUrl = computed(() => chatMode.value === "server_stream" ? "/api/ai-chat/stream" : "/api/ai-chat/reply")
-
 function formatTime(value: string) {
   return dayjs(value).format("HH:mm:ss")
 }
 
 function applyPrompt(prompt: string) {
   draft.value = prompt
+}
+
+function createMessage(role: AiChatMessage["role"], content: string): AiChatMessage {
+  return {
+    id: `${role}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    role,
+    content,
+    createdAt: new Date().toISOString()
+  }
 }
 
 async function loadHistory() {
@@ -50,21 +57,59 @@ async function clearMessages() {
 }
 
 async function submitMessage() {
+  const content = draft.value.trim()
+  if (!content || submitting.value || streaming.value) return
+
+  const userMessage = createMessage("user", content)
+  messages.value.push(userMessage)
+  draft.value = ""
+  pendingAssistant.value = ""
+
   try {
-    await streamController.submitMessage()
+    if (chatMode.value === "server_stream") {
+      await streamController.submitServerStream({
+        request: () => fetch("/api/ai-chat/stream", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ message: content })
+        }),
+        onDelta: (chunk) => {
+          pendingAssistant.value += chunk
+        },
+        onDone: (message) => {
+          messages.value.push(message || createMessage("assistant", pendingAssistant.value))
+          pendingAssistant.value = ""
+        }
+      })
+    } else {
+      await streamController.submitClientSimulatedStream({
+        request: () => fetch("/api/ai-chat/reply", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ message: content })
+        }),
+        onDelta: (chunk) => {
+          pendingAssistant.value += chunk
+        },
+        onDone: (result) => {
+          messages.value.push(result.message || createMessage("assistant", result.content))
+          pendingAssistant.value = ""
+        }
+      })
+    }
   } catch (error) {
     console.error(error)
+    pendingAssistant.value = ""
+    messages.value = messages.value.filter(message => message.id !== userMessage.id)
     ElMessage.error("发送失败，请检查本地后端服务是否已启动")
   }
 }
 
-const streamController = useAiChatStream({
-  messages,
-  draft,
-  pendingContent: pendingAssistant,
-  responseMode: chatMode,
-  streamUrl: submitUrl
-})
+const streamController = useAiChatStream()
 
 const sessionController = useAiChatSession({
   messages,

@@ -21,11 +21,11 @@
 
 ## 文件位置
 
-- `src/common/components/RichContentRenderer/`
-- `src/common/components/AiChatShell/`
-- `src/common/composables/useAiChatStream.ts`
-- `src/common/composables/useAiChatSession.ts`
-- `src/common/utils/sse.ts`
+- `src/pages/demo/aiChat/components/RichContentRenderer/`
+- `src/pages/demo/aiChat/components/AiChatShell/`
+- `src/pages/demo/aiChat/composables/useAiChatStream.ts`
+- `src/pages/demo/aiChat/composables/useAiChatSession.ts`
+- `src/pages/demo/aiChat/utils/sse.ts`
 
 ## 依赖
 
@@ -37,7 +37,7 @@ pnpm add echarts markdown-it markdown-it-task-lists
 
 ```vue
 <script setup lang="ts">
-import { RichContentRenderer } from "@/common/components/RichContentRenderer"
+import { RichContentRenderer } from "@/pages/demo/aiChat/components/RichContentRenderer"
 
 const content = `
 # 示例标题
@@ -77,8 +77,8 @@ const content = `
 <script setup lang="ts">
 import dayjs from "dayjs"
 import { computed, ref } from "vue"
-import { AiChatShell } from "@/common/components/AiChatShell"
-import type { AiChatMessage } from "@/common/components/AiChatShell"
+import { AiChatShell } from "@/pages/demo/aiChat/components/AiChatShell"
+import type { AiChatMessage } from "@/pages/demo/aiChat/components/AiChatShell"
 
 const draft = ref("")
 const messages = ref<AiChatMessage[]>([])
@@ -167,45 +167,47 @@ function handleSubmit() {
 ## useAiChatStream 用法
 
 ```ts
-import { ref } from "vue"
-import type { AiChatMessage } from "@/common/components/AiChatShell"
-import { useAiChatStream } from "@/common/composables/useAiChatStream"
+import { useAiChatStream } from "@/pages/demo/aiChat/composables/useAiChatStream"
 
-const draft = ref("")
-const messages = ref<AiChatMessage[]>([])
-const pendingContent = ref("")
+const streamController = useAiChatStream()
 
-const streamController = useAiChatStream({
-  messages,
-  draft,
-  pendingContent,
-  responseMode: "server_stream",
-  streamUrl: "/api/ai-chat/stream"
-})
-
-const { submitting, streaming, submitMessage } = streamController
+const { submitting, streaming, submitServerStream, submitClientSimulatedStream } = streamController
 ```
 
-### UseAiChatStreamOptions
+`useAiChatStream` 现在是纯流式执行器，不再直接接收：
 
-- `messages: Ref<AiChatMessage[]>`
-- `draft: Ref<string>`
-- `pendingContent: Ref<string>`
-- `streamUrl: string`
-- `responseMode?: "server_stream" | "client_simulated_stream"`
-- `createUserMessage?: (content: string) => AiChatMessage`
-- `createAssistantMessage?: (content: string) => AiChatMessage`
-- `buildSubmitBody?: (message: string) => Record<string, unknown>`
-- `parseStreamPayload?: (raw: string) => AiChatStreamPayload`
-- `parseNonStreamResponse?: (response: Response) => Promise<AiChatNonStreamResult>`
-- `getSimulatedChunks?: (content: string) => string[]`
-- `simulatedChunkDelay?: number`
+- `messages`
+- `draft`
+- `streamUrl`
+- `responseMode`
+- `createUserMessage`
+- `createAssistantMessage`
+- `buildSubmitBody`
+
+这些业务状态应由页面或业务层自己管理。
 
 ### 返回值
 
 - `submitting`
 - `streaming`
-- `submitMessage()`
+- `submitServerStream(options)`
+- `submitClientSimulatedStream(options)`
+
+### submitServerStream(options)
+
+- `request: () => Promise<Response>`
+- `onDelta: (content: string) => void`
+- `onDone: (message?: AiChatMessage) => void`
+- `parseStreamPayload?: (raw: string) => AiChatStreamPayload`
+
+### submitClientSimulatedStream(options)
+
+- `request: () => Promise<Response>`
+- `onDelta: (content: string) => void`
+- `onDone: (result: AiChatNonStreamResult) => void`
+- `parseNonStreamResponse?: (response: Response) => Promise<AiChatNonStreamResult>`
+- `getSimulatedChunks?: (content: string) => string[]`
+- `simulatedChunkDelay?: number`
 
 ## 两种流式原理
 
@@ -236,7 +238,7 @@ data: {"type":"done","message":{...}}
 
 - 因为 `SSE` 标准里一个事件可以包含多行字段，比如 `event:`、`id:`、`data:`
 - 所以前端不能假设整个事件块只有一行 `data:`
-- 当前代码里已经下沉到 `src/common/utils/sse.ts`
+- 当前代码里已经下沉到 `src/pages/demo/aiChat/utils/sse.ts`
 - `resolveSSEEvents(buffer)`：负责按 `\n\n` 拆分完整事件块，并保留未完成尾巴
 - `getSSEDataLine(eventBlock)`：负责从单个事件块里提取 `data:` 行
 
@@ -245,6 +247,7 @@ data: {"type":"done","message":{...}}
 - 后端本身接的是大模型流式接口
 - 希望首字尽可能快出来
 - 希望前后端都遵循真实流式协议
+- `useAiChatStream` 只负责流的读取和解析，不负责消息列表状态
 
 ### 2. 前端模拟流式 `client_simulated_stream`
 
@@ -262,6 +265,7 @@ data: {"type":"done","message":{...}}
 
 - 网络层：一次性返回
 - 展示层：前端自己分片模拟打字效果
+- `useAiChatStream` 只负责模拟逐段输出，不负责你页面里的消息状态组织
 
 适用场景：
 
@@ -286,12 +290,15 @@ data: {"type":"done","message":{...}}
 适合后端返回 SSE 或者 `ReadableStream` 分片：
 
 ```ts
-useAiChatStream({
-  messages,
-  draft,
-  pendingContent,
-  responseMode: "server_stream",
-  streamUrl: "/api/ai-chat/stream"
+await streamController.submitServerStream({
+  request: () => fetch("/api/ai-chat/stream", { method: "POST" }),
+  onDelta: (chunk) => {
+    pendingContent.value += chunk
+  },
+  onDone: (message) => {
+    if (message)
+      messages.value.push(message)
+  }
 })
 ```
 
@@ -300,12 +307,19 @@ useAiChatStream({
 适合后端接口只会一次性返回完整回答：
 
 ```ts
-useAiChatStream({
-  messages,
-  draft,
-  pendingContent,
-  responseMode: "client_simulated_stream",
-  streamUrl: "/api/chat/reply",
+await streamController.submitClientSimulatedStream({
+  request: () => fetch("/api/chat/reply", { method: "POST" }),
+  onDelta: (chunk) => {
+    pendingContent.value += chunk
+  },
+  onDone: (result) => {
+    messages.value.push(result.message || {
+      id: `assistant_${Date.now()}`,
+      role: "assistant",
+      content: result.content,
+      createdAt: new Date().toISOString()
+    })
+  },
   parseNonStreamResponse: async (response) => {
     const result = await response.json()
     return {
@@ -321,8 +335,8 @@ useAiChatStream({
 
 ```ts
 import { ref } from "vue"
-import type { AiChatMessage } from "@/common/components/AiChatShell"
-import { useAiChatSession } from "@/common/composables/useAiChatSession"
+import type { AiChatMessage } from "@/pages/demo/aiChat/components/AiChatShell"
+import { useAiChatSession } from "@/pages/demo/aiChat/composables/useAiChatSession"
 
 const messages = ref<AiChatMessage[]>([])
 const pendingContent = ref("")
@@ -368,11 +382,11 @@ const { historyLoading, loadHistory, clearMessages } = sessionController
 
 如果要迁移到别的 Vue3 项目，最小拷贝集合如下：
 
-1. `src/common/components/RichContentRenderer/`
-2. `src/common/components/AiChatShell/`
-3. `src/common/composables/useAiChatStream.ts`
-4. `src/common/composables/useAiChatSession.ts`
-5. `src/common/utils/sse.ts`
+1. `src/pages/demo/aiChat/components/RichContentRenderer/`
+2. `src/pages/demo/aiChat/components/AiChatShell/`
+3. `src/pages/demo/aiChat/composables/useAiChatStream.ts`
+4. `src/pages/demo/aiChat/composables/useAiChatSession.ts`
+5. `src/pages/demo/aiChat/utils/sse.ts`
 6. `echarts`
 7. `markdown-it`
 8. `markdown-it-task-lists`

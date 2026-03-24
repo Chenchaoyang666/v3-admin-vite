@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { AiChatMessage, AiChatStatItem } from "./types"
 import { computed, nextTick, ref, watch } from "vue"
-import { RichContentRenderer } from "@/common/components/RichContentRenderer"
+import { RichContentRenderer } from "../RichContentRenderer"
 
 const props = withDefaults(defineProps<{
   draft: string

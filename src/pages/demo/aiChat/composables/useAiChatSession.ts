@@ -1,5 +1,5 @@
 import type { ComputedRef, Ref } from "vue"
-import type { AiChatMessage } from "@/common/components/AiChatShell"
+import type { AiChatMessage } from "../components/AiChatShell"
 import { ref, unref } from "vue"
 
 export interface ApiResponse<T> {
