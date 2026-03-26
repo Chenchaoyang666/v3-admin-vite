@@ -42,6 +42,7 @@ const segments = computed(() => parseRichContent(props.content))
   --rich-content-surface: rgba(255, 251, 245, 0.72);
   font-size: 16px;
   line-height: 1.8;
+  white-space: normal;
 }
 
 .chart-loading {
