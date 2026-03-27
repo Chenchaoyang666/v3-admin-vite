@@ -51,7 +51,7 @@ export default defineConfig(({ mode }) => {
           // 是否允许跨域
           changeOrigin: true,
           // 重写路径
-          rewrite: (path) => path.replace(/^\/api/, "")
+          // rewrite: (path) => path.replace(/^\/api/, "")
         }
       },
       // 是否允许跨域
