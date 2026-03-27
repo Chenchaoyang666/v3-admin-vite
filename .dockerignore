@@ -1,0 +1,14 @@
+.git
+.github
+.vscode
+.cursor
+.claude
+.trae
+node_modules
+dist
+.pnpm-store
+coverage
+*.log
+.DS_Store
+backend/data/*.json
+!backend/data/.gitkeep

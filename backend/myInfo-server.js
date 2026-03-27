@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync } from "node:fs"
-import { dirname, join } from "node:path"
+import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import cors from "cors"
 import express from "express"
@@ -12,7 +12,7 @@ const __dirname = dirname(__filename)
 
 // 创建 Express 应用
 const app = express()
-const PORT = 3001
+const PORT = Number(process.env.PORT || 3001)
 
 // 中间件
 app.use(cors())
@@ -21,19 +21,40 @@ app.use(express.json({ limit: "10mb" }))
 app.use(express.urlencoded({ extended: true, limit: "10mb" }))
 
 // 确保数据目录存在
-const DATA_DIR = join(__dirname, "data")
+const DATA_DIR = process.env.DATA_DIR
+  ? resolve(process.env.DATA_DIR)
+  : join(__dirname, "data")
 if (!existsSync(DATA_DIR)) {
   mkdirSync(DATA_DIR, { recursive: true })
 }
 
-registerAiChatRoutes(app, { dataDir: DATA_DIR })
-registerResumeRoutes(app, { dataDir: DATA_DIR })
-registerPageStatsRoutes(app, { dataDir: DATA_DIR })
+const apiRouter = express.Router()
+
+registerAiChatRoutes(apiRouter, { dataDir: DATA_DIR })
+registerResumeRoutes(apiRouter, { dataDir: DATA_DIR })
+registerPageStatsRoutes(apiRouter, { dataDir: DATA_DIR })
+
+app.use("/api", apiRouter)
 
 // 健康检查
 app.get("/health", (req, res) => {
   res.json({ status: "ok", message: "myInfo backend is running" })
 })
+
+app.get("/api/health", (req, res) => {
+  res.json({ status: "ok", message: "myInfo backend is running" })
+})
+
+const DIST_DIR = resolve(__dirname, "../dist")
+const INDEX_FILE = join(DIST_DIR, "index.html")
+
+if (existsSync(INDEX_FILE)) {
+  app.use(express.static(DIST_DIR))
+
+  app.get(/^\/(?!api(?:\/|$)|health$).*/, (req, res) => {
+    res.sendFile(INDEX_FILE)
+  })
+}
 
 // 启动服务器
 app.listen(PORT, () => {
@@ -41,7 +62,9 @@ app.listen(PORT, () => {
   console.log(`myInfo 后端服务已启动`)
   console.log(`端口: ${PORT}`)
   console.log(`健康检查: http://localhost:${PORT}/health`)
+  console.log(`API 健康检查: http://localhost:${PORT}/api/health`)
   console.log(`数据目录: ${DATA_DIR}`)
+  console.log(`静态资源目录: ${DIST_DIR}`)
   console.log("=========================================")
 })
 

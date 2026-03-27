@@ -1,3 +1,12 @@
+---
+title: V3 Admin Vite Space
+emoji: 🚀
+colorFrom: yellow
+colorTo: red
+sdk: docker
+app_port: 7860
+---
+
 <div align="center">
   <img alt="logo" width="120" height="120" src="./src/common/assets/images/layouts/logo.png">
   <h1>V3 Admin Vite</h1>
@@ -28,6 +37,35 @@ V3 Admin Vite is a well-crafted backend management system template, built with p
 > If you have mobile web app requirements, give the new open-source template [MobVue](https://github.com/un-pany/mobvue) a try.
 
 ## Usage
+
+## Hugging Face Spaces Deployment
+
+This repository supports deployment to Hugging Face Spaces using a Docker Space.
+
+- Space type: `Docker`
+- App port: `7860`
+- Recommended persistent storage path: `/data`
+
+Recommended Space environment variables:
+
+```bash
+PORT=7860
+DATA_DIR=/data
+NODE_ENV=production
+```
+
+Deployment notes:
+
+- The front-end is built into `dist/`
+- The Express server serves both static assets and `/api/*`
+- Demo data is stored in `DATA_DIR` and should point to persistent storage in Spaces
+
+Local production-style verification:
+
+```bash
+pnpm build:space
+PORT=7860 DATA_DIR=./backend/data node backend/myInfo-server.js
+```
 
 <details>
 <summary>Recommended Environment</summary>
