@@ -652,7 +652,7 @@ function compressImage(file: File): Promise<string> {
         canvas.width = Math.round(img.width * scale)
         canvas.height = Math.round(img.height * scale)
         canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height)
-        resolve(canvas.toDataURL("image/jpeg", 0.85))
+        resolve(canvas.toDataURL("image/webp", 0.85))
       }
       img.onerror = reject
       img.src = e.target!.result as string
