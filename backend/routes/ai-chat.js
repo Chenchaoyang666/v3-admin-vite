@@ -25,7 +25,7 @@ function buildAssistantReply(userMessage) {
     "",
     `已收到你的问题：**${userMessage}**。`,
     "",
-    "这是一个用于演示前端流式输出的本地接口，它会像真实大模型那样逐段返回内容，并且现在支持更完整的 Markdown 和真正的 ECharts 渲染。",
+    "这是一个用于演示前端流式输出的本地接口，它会像真实大模型那样逐段返回内容，并且现在支持更完整的 Markdown、真正的 ECharts 渲染，以及可分页的 VXETable 表格块。",
     "",
     "## 当前支持的内容",
     "",
@@ -33,6 +33,7 @@ function buildAssistantReply(userMessage) {
     "- 表格对齐、任务列表、分割线、代码块",
     "- 图片",
     "- 使用完整 ECharts option 的 `echarts` 图表代码块",
+    "- 使用结构化 JSON 配置的 `vxetable` 分页表格代码块",
     "",
     "## 关键观察点",
     "",
@@ -52,12 +53,13 @@ function buildAssistantReply(userMessage) {
     "| 表格 | 已支持 | 会自动横向滚动 |",
     "| 图片 | 已支持 | 支持标准 `![alt](url)` 语法 |",
     "| 图表 | 已支持 | 使用完整 `echarts` option 渲染 |",
+    "| 分页表格 | 已支持 | 使用 `vxetable` JSON 配置并支持本地分页 |",
     "",
     "## 示例任务列表",
     "",
     "- [x] 支持流式增量输出",
     "- [x] 支持 Markdown 表格",
-    "- [x] 支持图片与真实图表",
+    "- [x] 支持图片、真实图表与分页表格",
     "- [ ] 可继续接入真实大模型流",
     "",
     "---",
@@ -121,6 +123,39 @@ function buildAssistantReply(userMessage) {
           lineStyle: { width: 3 }
         }
       ]
+    }, null, 2),
+    "```",
+    "",
+    "## 示例分页表格",
+    "",
+    "```vxetable",
+    JSON.stringify({
+      title: "近 12 条商品趋势明细",
+      columns: [
+        { field: "date", title: "日期", minWidth: 120 },
+        { field: "channel", title: "渠道", minWidth: 120 },
+        { field: "orders", title: "订单数", minWidth: 100, align: "center" },
+        { field: "gmv", title: "成交额", minWidth: 120, align: "right" },
+        { field: "rate", title: "转化率", minWidth: 100, align: "center" }
+      ],
+      data: [
+        { date: "2026-03-20", channel: "App", orders: 126, gmv: "18,240", rate: "12.3%" },
+        { date: "2026-03-21", channel: "Web", orders: 98, gmv: "15,180", rate: "10.8%" },
+        { date: "2026-03-22", channel: "Mini Program", orders: 143, gmv: "22,460", rate: "14.2%" },
+        { date: "2026-03-23", channel: "App", orders: 154, gmv: "24,810", rate: "15.1%" },
+        { date: "2026-03-24", channel: "Web", orders: 112, gmv: "16,920", rate: "11.4%" },
+        { date: "2026-03-25", channel: "Mini Program", orders: 168, gmv: "27,300", rate: "16.2%" },
+        { date: "2026-03-26", channel: "App", orders: 175, gmv: "29,640", rate: "16.8%" },
+        { date: "2026-03-27", channel: "Web", orders: 121, gmv: "18,770", rate: "12.1%" },
+        { date: "2026-03-28", channel: "Mini Program", orders: 182, gmv: "30,950", rate: "17.4%" },
+        { date: "2026-03-29", channel: "App", orders: 191, gmv: "32,180", rate: "17.9%" },
+        { date: "2026-03-30", channel: "Web", orders: 134, gmv: "20,360", rate: "12.9%" },
+        { date: "2026-03-31", channel: "Mini Program", orders: 205, gmv: "34,420", rate: "18.6%" }
+      ],
+      pagination: {
+        pageSize: 5,
+        pageSizes: [5, 10, 20]
+      }
     }, null, 2),
     "```",
     "",

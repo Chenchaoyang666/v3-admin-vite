@@ -7,6 +7,8 @@
   "repository": "https://github.com/un-pany/v3-admin-vite",
   "scripts": {
     "dev": "vite",
+    "backend": "node backend/myInfo-server.js",
+    "dev:full": "pnpm run backend & pnpm dev",
     "build:staging": "vue-tsc && vite build --mode staging",
     "build": "vue-tsc && vite build",
     "build:space": "vite build --mode production",

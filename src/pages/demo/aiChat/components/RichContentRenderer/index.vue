@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { computed } from "vue"
 import RichEChartsBlock from "./RichEChartsBlock.vue"
+import RichVxeTableBlock from "./RichVxeTableBlock.vue"
 import { parseRichContent } from "./utils"
 
 const props = defineProps<{
@@ -24,13 +25,17 @@ const segments = computed(() => parseRichContent(props.content))
         :option="segment.option"
         :height="chartHeight"
       />
+      <RichVxeTableBlock
+        v-else-if="segment.type === 'vxetable'"
+        :table="segment.table"
+      />
       <div v-else class="chart-loading">
         <div class="chart-loading__box">
           <span class="chart-loading__dot" />
           <span class="chart-loading__dot" />
           <span class="chart-loading__dot" />
         </div>
-        <p>图表生成中...</p>
+        <p>{{ segment.blockType === "vxetable" ? "表格生成中..." : "图表生成中..." }}</p>
       </div>
     </template>
   </div>

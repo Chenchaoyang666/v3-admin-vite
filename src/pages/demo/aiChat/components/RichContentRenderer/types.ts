@@ -1,4 +1,7 @@
 import type { EChartsOption } from "echarts"
+import type { VxePagerPropTypes, VxeTableDefines } from "vxe-table"
+
+export type RichBlockType = "echarts" | "vxetable"
 
 export interface RichMarkdownSegment {
   type: "markdown"
@@ -11,8 +14,31 @@ export interface RichChartSegment {
   raw: string
 }
 
-export interface RichChartLoadingSegment {
-  type: "echarts-loading"
+export interface RichTablePaginationConfig {
+  pageSize?: number
+  pageSizes?: VxePagerPropTypes.PageSizes
 }
 
-export type RichContentSegment = RichMarkdownSegment | RichChartSegment | RichChartLoadingSegment
+export interface RichTableBlockConfig {
+  title?: string
+  columns: VxeTableDefines.ColumnOptions[]
+  data: Record<string, any>[]
+  pagination?: RichTablePaginationConfig
+}
+
+export interface RichTableSegment {
+  type: "vxetable"
+  table: RichTableBlockConfig
+  raw: string
+}
+
+export interface RichBlockLoadingSegment {
+  type: "block-loading"
+  blockType: RichBlockType
+}
+
+export type RichContentSegment =
+  | RichMarkdownSegment
+  | RichChartSegment
+  | RichTableSegment
+  | RichBlockLoadingSegment

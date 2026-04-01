@@ -64,7 +64,7 @@ Local production-style verification:
 
 ```bash
 pnpm build:space
-PORT=7860 DATA_DIR=./backend/data node backend/myInfo-server.js
+PORT=7860 DATA_DIR=./backend/data pnpm run backend
 ```
 
 <details>

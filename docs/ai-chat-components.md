@@ -5,7 +5,7 @@
 当前这套聊天能力拆成了两层：
 
 1. `RichContentRenderer`
-用途：渲染 Markdown、表格、任务列表、分割线、图片，以及 ` ```echarts ` 代码块。
+用途：渲染 Markdown、表格、任务列表、分割线、图片，以及 ` ```echarts `、` ```vxetable ` 代码块。
 
 2. `AiChatShell`
 用途：提供完整聊天壳布局，包括头部、侧栏、消息区、流式消息展示、自动滚动、回到底部按钮、输入区和发送区。
@@ -58,6 +58,25 @@ const content = `
   "series": [{ "type": "bar", "data": [12, 20, 15] }]
 }
 \`\`\`
+
+\`\`\`vxetable
+{
+  "title": "分页结果",
+  "columns": [
+    { "field": "date", "title": "日期" },
+    { "field": "sales", "title": "销量" }
+  ],
+  "data": [
+    { "date": "2026-03-28", "sales": 123 },
+    { "date": "2026-03-29", "sales": 156 },
+    { "date": "2026-03-30", "sales": 178 }
+  ],
+  "pagination": {
+    "pageSize": 2,
+    "pageSizes": [2, 5, 10]
+  }
+}
+\`\`\`
 `
 </script>
 
@@ -70,6 +89,13 @@ const content = `
 
 - `content: string`
 - `chartHeight?: number | string`
+
+### 特殊代码块协议
+
+- `\`\`\`echarts`：内容必须是合法的 ECharts option JSON
+- `\`\`\`vxetable` / `\`\`\`vxe-table`：内容必须是合法的表格 JSON，至少包含 `columns` 和 `data`
+- 流式过程中如果特殊 block 尚未闭合，会展示“生成中”占位态
+- 特殊 block 已闭合但 JSON 非法时，会回退为普通 Markdown 代码块展示
 
 ## AiChatShell 用法
 
