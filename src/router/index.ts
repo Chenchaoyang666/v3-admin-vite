@@ -109,6 +109,15 @@ export const constantRoutes: RouteRecordRaw[] = [
         }
       },
       {
+        path: "chentestvue",
+        component: () => import("@/pages/demo/chentestvue/index.vue"),
+        name: "ChentestVue",
+        meta: {
+          title: "陈测试 Vue",
+          keepAlive: true
+        }
+      },
+      {
         path: "aiChat",
         redirect: "/demo/aiChat/selectText",
         name: "AiChat",
