@@ -104,4 +104,43 @@ describe("parseRichContent", () => {
       expect(segments[0].table.pagination?.pageSizes).toEqual([2, 4])
     }
   })
+
+  it("renders legacy html content instead of escaping it", () => {
+    const segments = parseRichContent([
+      "<h2>旧格式内容</h2>",
+      "<p>这里有一段 <strong>HTML</strong> 文本。</p>",
+      "<ul><li>项目 A</li><li>项目 B</li></ul>"
+    ].join("\n"))
+
+    expect(segments).toHaveLength(1)
+    expect(segments[0]?.type).toBe("markdown")
+
+    if (segments[0]?.type === "markdown") {
+      expect(segments[0].html).toContain("<h2>旧格式内容</h2>")
+      expect(segments[0].html).toContain("<strong>HTML</strong>")
+      expect(segments[0].html).toContain("<li>项目 A</li>")
+      expect(segments[0].html).not.toContain("&lt;h2&gt;")
+    }
+  })
+
+  it("sanitizes unsafe html from legacy content", () => {
+    const segments = parseRichContent([
+      "<p onclick=\"alert('xss')\">安全文本</p>",
+      "<script>alert('xss')</script>",
+      "<a href=\"javascript:alert('xss')\">危险链接</a>",
+      "<img src=\"javascript:alert('xss')\" onerror=\"alert('xss')\" alt=\"demo\">"
+    ].join("\n"))
+
+    expect(segments).toHaveLength(1)
+    expect(segments[0]?.type).toBe("markdown")
+
+    if (segments[0]?.type === "markdown") {
+      expect(segments[0].html).toContain("<p>安全文本</p>")
+      expect(segments[0].html).not.toContain("onclick")
+      expect(segments[0].html).not.toContain("<script")
+      expect(segments[0].html).not.toContain("javascript:")
+      expect(segments[0].html).toContain("<a>危险链接</a>")
+      expect(segments[0].html).toContain("<img alt=\"demo\">")
+    }
+  })
 })
