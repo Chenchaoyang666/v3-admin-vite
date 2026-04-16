@@ -65,7 +65,6 @@ export function buildBranchPeriodWarningComboOption(
         type: "value",
         name: "预警客户占比",
         min: 0,
-        max: 0.06,
         axisLabel: {
           formatter: value => `${(Number(value) * 100).toFixed(0)}%`
         }

@@ -66,7 +66,26 @@ export function buildTop5LineOption(data: WarningIndustryRow[] = warningIndustry
     },
     tooltip: {
       trigger: "axis",
-      valueFormatter: value => value == null ? "-" : `${value}%`
+      formatter(params) {
+        const rows = (Array.isArray(params) ? params : [params])
+          .map((item) => {
+            const rawValue = Array.isArray(item.value) ? item.value[0] : item.value
+            const value = typeof rawValue === "number" ? rawValue : Number(rawValue)
+
+            return {
+              marker: item.marker,
+              name: item.seriesName,
+              value
+            }
+          })
+          .filter(item => Number.isFinite(item.value))
+          .sort((left, right) => right.value - left.value)
+
+        const title = Array.isArray(params) ? (params[0]?.axisValueLabel || params[0]?.name || "") : (params.axisValueLabel || params.name || "")
+        const lines = rows.map(item => `${item.marker}${item.name}：${item.value.toFixed(2)}%`)
+
+        return [title, ...lines].join("<br/>")
+      }
     },
     legend: {
       top: 40,
