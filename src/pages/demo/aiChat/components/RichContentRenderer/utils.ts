@@ -179,197 +179,87 @@ function normalizePageSizes(pageSizes?: RichTablePaginationConfig["pageSizes"]) 
 }
 
 function renderRichText(source: string) {
-  return sanitizeHtml(markdown.render(source))
+  return markdown.render(normalizeListItemTables(source))
 }
 
-const BLOCKED_TAGS = new Set([
-  "applet",
-  "audio",
-  "base",
-  "button",
-  "embed",
-  "form",
-  "frame",
-  "frameset",
-  "iframe",
-  "link",
-  "meta",
-  "object",
-  "script",
-  "select",
-  "source",
-  "style",
-  "textarea",
-  "track",
-  "video"
-])
+function normalizeListItemTables(source: string) {
+  const lines = source.split("\n")
+  const normalizedLines: string[] = []
 
-const ALLOWED_TAGS = new Set([
-  "a",
-  "article",
-  "b",
-  "blockquote",
-  "br",
-  "code",
-  "del",
-  "div",
-  "em",
-  "figcaption",
-  "figure",
-  "h1",
-  "h2",
-  "h3",
-  "h4",
-  "h5",
-  "h6",
-  "hr",
-  "img",
-  "input",
-  "li",
-  "mark",
-  "ol",
-  "p",
-  "pre",
-  "s",
-  "section",
-  "span",
-  "strong",
-  "sub",
-  "sup",
-  "table",
-  "tbody",
-  "td",
-  "th",
-  "thead",
-  "tr",
-  "u",
-  "ul"
-])
+  let index = 0
+  while (index < lines.length) {
+    const line = lines[index]
+    const baseIndent = line.match(/^(\s*)/)?.[1] || ""
+    if (!isListItemLine(line.trimStart())) {
+      normalizedLines.push(line)
+      index += 1
+      continue
+    }
 
-const GLOBAL_ALLOWED_ATTRS = new Set([
-  "class",
-  "title"
-])
+    let endIndex = index + 1
+    while (endIndex < lines.length) {
+      const currentLine = lines[endIndex]
+      if (/^\s*$/.test(currentLine)) {
+        endIndex += 1
+        continue
+      }
 
-const TAG_ALLOWED_ATTRS: Record<string, Set<string>> = {
-  a: new Set(["href", "target", "rel"]),
-  img: new Set(["src", "alt", "title"]),
-  input: new Set(["type", "checked", "disabled"]),
-  ol: new Set(["start"]),
-  td: new Set(["colspan", "rowspan"]),
-  th: new Set(["colspan", "rowspan"])
+      const currentIndent = currentLine.match(/^(\s*)/)?.[1] || ""
+      if (currentIndent.length <= baseIndent.length && isListItemLine(currentLine.trimStart()))
+        break
+
+      endIndex += 1
+    }
+
+    const blockLines = lines.slice(index + 1, endIndex)
+    const firstContentIndex = blockLines.findIndex(blockLine => blockLine.trim())
+    const hasImmediateTable = firstContentIndex >= 0
+      && isTableRow(blockLines[firstContentIndex] || "")
+      && isTableSeparatorRow(blockLines[firstContentIndex + 1] || "")
+
+    normalizedLines.push(line)
+
+    if (!hasImmediateTable) {
+      normalizedLines.push(...blockLines)
+      index = endIndex
+      continue
+    }
+
+    if (blockLines[0]?.trim())
+      normalizedLines.push("")
+
+    const nestedIndent = `${baseIndent}   `
+    blockLines.forEach((blockLine) => {
+      if (!blockLine.trim()) {
+        normalizedLines.push("")
+        return
+      }
+
+      const trimmedLine = blockLine.trimStart()
+      if (blockLine.startsWith(nestedIndent)) {
+        normalizedLines.push(blockLine)
+        return
+      }
+
+      normalizedLines.push(`${nestedIndent}${trimmedLine}`)
+    })
+
+    index = endIndex
+  }
+
+  return normalizedLines.join("\n")
 }
 
-function sanitizeHtml(html: string) {
-  if (typeof DOMParser === "undefined") {
-    return html
-      .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, "")
-      .replace(/\son\w+=(["']).*?\1/gi, "")
-      .replace(/\s(href|src)=(["'])javascript:.*?\2/gi, "")
-  }
-
-  const parser = new DOMParser()
-  const document = parser.parseFromString(html, "text/html")
-  sanitizeNode(document.body, document)
-  return document.body.innerHTML
+function isListItemLine(line: string) {
+  return /^[*+\-]\s+\S/.test(line) || /^\d+\.\s+\S/.test(line)
 }
 
-function sanitizeNode(root: ParentNode, document: Document) {
-  Array.from(root.childNodes).forEach((node) => {
-    if (node.nodeType === Node.COMMENT_NODE) {
-      node.remove()
-      return
-    }
-
-    if (node.nodeType !== Node.ELEMENT_NODE) {
-      return
-    }
-
-    const element = node as HTMLElement
-    const tag = element.tagName.toLowerCase()
-
-    sanitizeNode(element, document)
-
-    if (BLOCKED_TAGS.has(tag)) {
-      element.remove()
-      return
-    }
-
-    if (!ALLOWED_TAGS.has(tag)) {
-      unwrapElement(element, document)
-      return
-    }
-
-    sanitizeAttributes(element, tag)
-  })
+function isTableRow(line: string) {
+  const text = line.trim()
+  return /^\|.+\|\s*$/.test(text)
 }
 
-function unwrapElement(element: HTMLElement, document: Document) {
-  const fragment = document.createDocumentFragment()
-  while (element.firstChild) {
-    fragment.appendChild(element.firstChild)
-  }
-  element.replaceWith(fragment)
-}
-
-function sanitizeAttributes(element: HTMLElement, tag: string) {
-  const tagAllowedAttrs = TAG_ALLOWED_ATTRS[tag] ?? new Set<string>()
-
-  Array.from(element.attributes).forEach((attribute) => {
-    const name = attribute.name.toLowerCase()
-    const value = attribute.value.trim()
-
-    if (name.startsWith("on") || name === "style" || name === "srcset") {
-      element.removeAttribute(attribute.name)
-      return
-    }
-
-    if (!GLOBAL_ALLOWED_ATTRS.has(name) && !tagAllowedAttrs.has(name)) {
-      element.removeAttribute(attribute.name)
-      return
-    }
-
-    if ((name === "href" || name === "src") && !isSafeUrl(value, name)) {
-      element.removeAttribute(attribute.name)
-      return
-    }
-
-    if (tag === "a" && name === "target" && value !== "_blank") {
-      element.removeAttribute(attribute.name)
-      return
-    }
-  })
-
-  if (tag === "a" && element.getAttribute("target") === "_blank") {
-    element.setAttribute("rel", "noopener noreferrer")
-  }
-
-  if (tag === "input" && element.getAttribute("type") !== "checkbox") {
-    unwrapElement(element, element.ownerDocument)
-  }
-}
-
-function isSafeUrl(value: string, attrName: "href" | "src") {
-  if (!value) return false
-
-  if (value.startsWith("#") || value.startsWith("/") || value.startsWith("./") || value.startsWith("../")) {
-    return true
-  }
-
-  if (attrName === "src" && value.startsWith("data:image/")) {
-    return true
-  }
-
-  try {
-    const url = new URL(value, "https://local.codex")
-    const protocol = url.protocol.toLowerCase()
-
-    if (protocol === "http:" || protocol === "https:") {
-      return true
-    }
-
-    return attrName === "href" && (protocol === "mailto:" || protocol === "tel:")
-  } catch {
-    return false
-  }
+function isTableSeparatorRow(line: string) {
+  const text = line.trim()
+  return /^\|?[\s:-]+\|[\s|:-]*$/.test(text)
 }
